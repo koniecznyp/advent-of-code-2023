@@ -1,28 +1,62 @@
-﻿string[] data = File.ReadAllLines("data.txt");
+﻿using System.Diagnostics;
 
-var hands = new List<Hand>();
-foreach(var row in data)
-{
-    var hand = row.Split(" ");
-    hands.Add(new(hand[0].ToCharArray(), int.Parse(hand[1])));
-}
+char[] cards = "AKQT98765432J".ToCharArray();
+string[] data = File.ReadAllLines("data.txt");
 
-var sortedHands = hands
-    .OrderBy(x => IsFiveOfKind(x.Cards))
-    .ThenBy(x => IsFourOfKind(x.Cards))
-    .ThenBy(x => IsFullHouse(x.Cards))
-    .ThenBy(x => IsThreeOfKind(x.Cards))
-    .ThenBy(x => IsTwoPair(x.Cards))
-    .ThenBy(x => IsOnePair(x.Cards))
-    .ThenBy(x => IsHighCard(x.Cards))
-    .ThenBy(x => string.Join("", x.Cards), new CamelCardSorter())
-    .ToArray();
-
-var sum = 0;
-for(int i=0; i< sortedHands.Length; i++)
-    sum += (i + 1) * sortedHands[i].Bid;
+var sum = data
+    .Select(x => {
+        var hand = x.Split(" ");
+        return new Hand(hand[0].ToCharArray(), int.Parse(hand[1]));
+    })
+    .OrderBy(x => GetHandType(x.Cards))
+    .ThenBy(x => string.Join(string.Empty, x.Cards), new CamelCardSorter())
+    .Select((x, i) => (i + 1) * x.Bid)
+    .Sum();
 
 Console.WriteLine($"sum: {sum}");
+
+HandType GetHandType(char[] cards)
+{
+    if (!cards.Contains('J'))
+        return GetType(cards);
+
+    var highestType = GetType(cards);
+    char[] variant = new char[cards.Length];
+    foreach(var item in cards)
+    {
+        Array.Copy(cards, variant, cards.Length);
+        cards.CopyTo(variant, 0);
+        for (int i=0; i<cards.Length; i++)
+        {
+            if (variant[i] == 'J')
+                variant[i] = item;
+        }
+        var variantType = GetType(variant);
+        if (variantType > highestType)
+            highestType = variantType;
+    }
+ 
+    return highestType;
+
+    HandType GetType(char[] cards)
+    {
+        if (IsFiveOfKind(cards))
+            return HandType.FiveOfKind;
+        if (IsFourOfKind(cards))
+            return HandType.FourOfKind;
+        if (IsFullHouse(cards))
+            return HandType.FullHouse;
+        if (IsThreeOfKind(cards))
+            return HandType.ThreeOfKind;
+        if (IsOnePair(cards))
+            return HandType.OnePair;
+        if (IsTwoPair(cards))
+            return HandType.TwoPair;
+        if (IsHighCard(cards))
+            return HandType.HighCard;
+        throw new UnreachableException();
+    }
+}
 
 bool IsFiveOfKind(char[] cards)
     => cards
@@ -65,22 +99,30 @@ bool IsHighCard(char[] cards)
         .GroupBy(x => x)
         .All(x => x.Count() == 1);
 
+enum HandType
+{
+    HighCard,
+    OnePair,
+    TwoPair,
+    ThreeOfKind,
+    FullHouse,
+    FourOfKind,
+    FiveOfKind
+}
+
 record Hand(char[] Cards, int Bid);
 
 class CamelCardSorter : IComparer<string>
 {
     public int Compare(string? x, string? y)
     {
-        var chars = "AKQJT98765432J";
-
+        var cards = "AKQT98765432J";
         for(int i=0; i<x.Length; i++)
         {
             if (x[i].Equals(y[i]))
                 continue;
 
-            return chars.IndexOf(x[i]) < chars.IndexOf(y[i])
-                ? 1
-                : -1;
+            return cards.IndexOf(x[i]) < cards.IndexOf(y[i]) ? 1: -1;
         }
 
         return 0;
