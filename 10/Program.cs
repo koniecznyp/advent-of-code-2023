@@ -1,17 +1,4 @@
-﻿string[] data2 = [
-    ".....",
-    ".S-7.",
-    ".|.|.",
-    ".L-J.",
-    "....."];
-
-string[] data3 = [
-    "..F7.",
-    ".FJ|.",
-    "SJ.L7",
-    "|F--J",
-    "LJ..."];
-string[] data = File.ReadAllLines("data.txt");
+﻿string[] data = File.ReadAllLines("data.txt");
 
 int x = 0;
 int y = 0;
